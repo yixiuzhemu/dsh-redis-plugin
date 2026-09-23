@@ -1,0 +1,48 @@
+# dsh-redis-plugin bundle contribution layer.
+# Applied by dsh when this bundle is listed in a profile. The plugin line is
+# referenced by package name (not a relative source path) so Node module
+# resolution can find the installed code.
+# Connection is fully environment-driven: every field reads a REDIS_* env var
+# (injected per deployment: dev / test / uat / prod) and falls back to a local
+# default. Precedence: if REDIS_URL is set it wins over host/port/db/password
+# (see src/connection/factory.ts). Empty strings fall back via `||`.
+- id: redis
+  name: dsh-redis-plugin
+  config:
+    connection:
+      topology: standalone
+      url: !!js "process.env.REDIS_URL || undefined"
+      host: !!js "process.env.REDIS_HOST || '127.0.0.1'"
+      port: !!js "Number(process.env.REDIS_PORT || 6379)"
+      password: !!js "process.env.REDIS_PASSWORD || undefined"
+      db: !!js "Number(process.env.REDIS_DB || 0)"
+    pool:
+      min: 2
+      max: 16
+      idleTimeoutMs: 30000
+      healthCheckMs: 15000
+    executor:
+      coreSize: 8
+      maxSize: 32
+      queueCapacity: 1024
+      keepAliveMs: 60000
+      timeoutMs: 3000
+      rejectPolicy: abort
+      retry:
+        maxAttempts: 3
+        backoffMs: 200
+    codec:
+      # Opt-in per-env namespace, e.g. REDIS_KEY_PREFIX=dev: (recommended when
+      # multiple environments share one Redis instance).
+      keyPrefix: !!js "process.env.REDIS_KEY_PREFIX || undefined"
+      value: json
+      typeHint: false
+      offloadThresholdBytes: 1048576
+    lock:
+      defaultTtlMs: 30000
+      watchdogIntervalMs: 1000
+      renewAheadMs: 10000
+      releaseOnDispose: false
+    tools:
+      enabled: true
+      allowDestructive: false
