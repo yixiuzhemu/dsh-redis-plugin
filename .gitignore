@@ -6,3 +6,4 @@ lib/
 coverage/
 dist/
 .idea/workspace.xml
+.npmrc

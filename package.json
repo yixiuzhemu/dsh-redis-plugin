@@ -1,6 +1,6 @@
 {
   "name": "dsh-redis-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "DeepSeek Harness (dsh) Redis plugin: connection, codec, thread-pool governance, query operations, distributed lock with watchdog, and model-visible tools.",
   "type": "module",
   "main": "lib/index.js",
@@ -37,6 +37,9 @@
     "distributed-lock"
   ],
   "license": "MIT",
+  "publishConfig": {
+    "registry": "https://lnpm.lan-bridge.cn/"
+  },
   "engines": {
     "node": ">=20"
   },
