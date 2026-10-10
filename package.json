@@ -1,6 +1,6 @@
 {
   "name": "@dtranx/dsh-redis-plugin",
-  "version": "0.2.0",
+  "version": "0.2.3",
   "description": "DeepSeek Harness (dsh) Redis plugin: connection, codec, thread-pool governance, query operations, distributed lock with watchdog, and model-visible tools.",
   "type": "module",
   "main": "lib/index.js",
