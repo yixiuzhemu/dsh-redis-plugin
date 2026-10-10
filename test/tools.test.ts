@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Context } from '@deepseek-ai/cordis'
 import type { PreToolDecision, ToolDefinition, ToolExecution } from '@deepseek-ai/dsh-tools'
 import { buildToolDefs } from '../src/tools/defs.js'
@@ -275,10 +275,12 @@ describe('registerRedisTools', () => {
   })
 
   it('skips registration and warns when ctx.tools is unavailable', () => {
-    const { ctx, registered, logs } = fakeCtx({ withTools: false })
+    const { ctx, registered } = fakeCtx({ withTools: false })
     const { svc } = makeFakeService()
+    const spy = vi.spyOn(console, 'log').mockImplementation(() => void 0)
     registerRedisTools(ctx, svc, toolsConfig)
     expect(registered.length).toBe(0)
-    expect(logs.some((l) => l.includes('ctx.tools unavailable'))).toBe(true)
+    expect(spy.mock.calls.some((c) => String(c[0]).includes('ctx.tools unavailable'))).toBe(true)
+    spy.mockRestore()
   })
 })

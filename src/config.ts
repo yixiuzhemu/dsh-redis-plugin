@@ -125,16 +125,16 @@ function compact<T extends object>(obj?: T): Partial<T> {
 export const Config = z.object({
   connection: z
     .object({
-      topology: z.enum(['standalone', 'sentinel', 'cluster']).default('standalone'),
-      url: z.string().optional(),
-      host: z.string().optional(),
-      port: z.number().optional(),
-      password: z.string().optional(),
-      username: z.string().optional(),
-      db: z.number().optional(),
-      tls: z.any().optional(),
-      sentinel: z.any().optional(),
-      cluster: z.any().optional(),
+      topology: z.union([z.const('standalone'), z.const('sentinel'), z.const('cluster')]).default('standalone'),
+      url: z.string(),
+      host: z.string(),
+      port: z.number(),
+      password: z.string(),
+      username: z.string(),
+      db: z.number(),
+      tls: z.any(),
+      sentinel: z.any(),
+      cluster: z.any(),
     })
     .default({}),
   pool: z
@@ -152,7 +152,7 @@ export const Config = z.object({
       queueCapacity: z.number().default(defaultConfig.executor.queueCapacity),
       keepAliveMs: z.number().default(defaultConfig.executor.keepAliveMs),
       timeoutMs: z.number().default(defaultConfig.executor.timeoutMs),
-      rejectPolicy: z.enum(['abort', 'discardOldest', 'callerRuns']).default('abort'),
+      rejectPolicy: z.union([z.const('abort'), z.const('discardOldest'), z.const('callerRuns')]).default('abort'),
       retry: z
         .object({
           maxAttempts: z.number().default(defaultConfig.executor.retry.maxAttempts),
@@ -163,8 +163,8 @@ export const Config = z.object({
     .default({}),
   codec: z
     .object({
-      keyPrefix: z.string().optional(),
-      value: z.enum(['json', 'string', 'raw']).default('json'),
+      keyPrefix: z.string(),
+      value: z.union([z.const('json'), z.const('string'), z.const('raw')]).default('json'),
       typeHint: z.boolean().default(false),
       offloadThresholdBytes: z.number().default(defaultConfig.codec.offloadThresholdBytes!),
     })

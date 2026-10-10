@@ -18,14 +18,26 @@ declare module '@deepseek-ai/cordis' {
 /** Plugin display name (diagnostics only). */
 export const name = 'dsh-redis-plugin'
 
+/**
+ * Terminal logger: writes to stdout so logs appear in both CLI and desktop host.
+ * - CLI mode: stdout goes directly to the terminal.
+ * - Desktop host: child.stdout is piped to the main process stdout (visible),
+ *   while child.stderr is buffered silently (NOT forwarded to any terminal).
+ * Therefore stdout is the only reliable channel for diagnostic output.
+ */
+function log(message: string): void {
+  console.log(`[dsh-redis-plugin] ${message}`)
+}
+
 /** Environments recognized by the `REDIS_ENV` selector (diagnostics only). */
 const KNOWN_ENVS = ['dev', 'test', 'uat', 'prod'] as const
 
 /**
- * No hard service dependencies: this is a foundational capability. Consumers
- * depend on *us* via `inject: ['redis']`, not the other way around.
+ * Service dependencies: this plugin provides `ctx.redis` as a foundational
+ * capability, but optionally registers model-visible tools if `ctx.tools` is
+ * available in the host environment.
  */
-export const inject: string[] = []
+export const inject: string[] = ['tools']
 
 /** Deployment-time config schema (schemastery) + `Config` type, re-exported. */
 export { Config }
@@ -38,13 +50,24 @@ export type { RedisConfig as ConfigType }
 export function apply(ctx: Context, config: RedisConfig): void {
   const resolved = resolveConfig(config ?? ({} as RedisConfig))
 
-  const redis = createRedis(resolved, { logger: ctx.logger })
+  // Use a stdout-based logger for the pool/watchdog so output is visible in
+  // both CLI and desktop host (desktop only forwards child stdout, not stderr).
+  const terminalLogger = {
+    info: (...args: unknown[]) => console.log('[dsh-redis-plugin]', ...args),
+    warn: (...args: unknown[]) => console.log('[dsh-redis-plugin] WARN:', ...args),
+    error: (...args: unknown[]) => console.log('[dsh-redis-plugin] ERROR:', ...args),
+  }
+
+  const redis = createRedis(resolved, { logger: terminalLogger })
 
   // 1) Expose the service on a stable context key for other plugins to inject.
   ctx.provide('redis', redis)
 
-  // 2) Warm up the connection pool (non-blocking; connects lazily/eagerly per client).
-  void redis.start()
+  // 2) Warm up the connection pool and log the result.
+  void redis.start().then(
+    () => log('all pool connections are ready'),
+    (err) => log(`pool startup failed: ${String(err)}`),
+  )
 
   // 3) Register model-visible tools + destructive-op guard (reversible).
   if (resolved.tools.enabled) registerRedisTools(ctx, redis, resolved.tools)
@@ -60,21 +83,11 @@ export function apply(ctx: Context, config: RedisConfig): void {
   // carry credentials.
   const env = process.env.REDIS_ENV || 'default'
   if (process.env.REDIS_ENV && !(KNOWN_ENVS as readonly string[]).includes(process.env.REDIS_ENV)) {
-    ctx.logger.warn(
-      '[dsh-redis-plugin] unknown REDIS_ENV=%s (expected one of: %s)',
-      process.env.REDIS_ENV,
-      KNOWN_ENVS.join(', '),
-    )
+    log(`unknown REDIS_ENV=${process.env.REDIS_ENV} (expected one of: ${KNOWN_ENVS.join(', ')})`)
   }
   const target = resolved.connection.url
     ? 'via REDIS_URL'
     : `${resolved.connection.host}:${resolved.connection.port}/${resolved.connection.db ?? 0}`
 
-  ctx.logger.info(
-    '[dsh-redis-plugin] ready (env=%s, topology=%s, target=%s, tools=%s)',
-    env,
-    resolved.connection.topology,
-    target,
-    resolved.tools.enabled ? 'on' : 'off',
-  )
+  log(`ready (env=${env}, topology=${resolved.connection.topology}, target=${target}, tools=${resolved.tools.enabled ? 'on' : 'off'})`)
 }

@@ -6,7 +6,7 @@ import type { ToolsConfig } from '../config.js'
 export const DESTRUCTIVE_TOOLS = new Set(['redis_del'])
 
 const jsonOutput = {
-  schema: { type: 'object' as const },
+  schema: { type: 'object' as const, additionalProperties: true },
   render: (_args: unknown, value: unknown) => [{ type: 'text', text: JSON.stringify(value, null, 2) }],
 }
 

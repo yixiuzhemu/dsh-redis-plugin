@@ -27,7 +27,7 @@ export interface RedisService extends Operations {
 export interface CreateRedisOptions {
   /** Override the ioredis constructor (used by tests with ioredis-mock). */
   clientCtor?: ClientCtor
-  /** Logger forwarded to the lock watchdog. */
+  /** Logger forwarded to the lock watchdog and connection pool. */
   logger?: WatchdogLogger
 }
 
@@ -42,7 +42,7 @@ export function createRedis(input: DeepPartial<Config> = {}, options: CreateRedi
   const codec = createCodec(config.codec)
   const executor = new TaskExecutor(config.executor)
   const factory = createConnectionFactory(config.connection, options.clientCtor)
-  const pool = new ConnectionPool(factory, config.pool)
+  const pool = new ConnectionPool(factory, config.pool, options.logger)
 
   const opsCtx: OpsContext = { pool, codec, executor }
   const operations = createOperations(opsCtx)

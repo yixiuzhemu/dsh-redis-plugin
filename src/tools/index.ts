@@ -11,7 +11,7 @@ import { installGuard } from './guard.js'
  */
 export function registerRedisTools(ctx: Context, redis: RedisService, config: ToolsConfig): void {
   if (!ctx.tools) {
-    ctx.logger?.warn('[dsh-redis-plugin] ctx.tools unavailable; skipping tool registration')
+    console.log('[dsh-redis-plugin] WARN: ctx.tools unavailable; skipping tool registration')
     return
   }
   const defs = buildToolDefs(redis, config)
@@ -19,7 +19,7 @@ export function registerRedisTools(ctx: Context, redis: RedisService, config: To
     ctx.tools.register(def)
   }
   installGuard(ctx, config.allowDestructive)
-  ctx.logger?.info('[dsh-redis-plugin] registered %d redis tools', defs.length)
+  console.log(`[dsh-redis-plugin] registered ${defs.length} redis tools`)
 }
 
 export { DESTRUCTIVE_TOOLS } from './defs.js'

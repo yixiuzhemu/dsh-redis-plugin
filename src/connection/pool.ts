@@ -30,9 +30,16 @@ interface Waiter {
  *
  * Idle connections are health-checked with `PING` and evicted when unhealthy.
  */
+export interface PoolLogger {
+  info(...args: unknown[]): void
+  warn(...args: unknown[]): void
+  error(...args: unknown[]): void
+}
+
 export class ConnectionPool {
   private readonly factory: ConnectionFactory
   private readonly cfg: PoolConfig
+  private readonly logger?: PoolLogger
 
   private readonly idle: RedisClient[] = []
   private readonly leased = new Set<RedisClient>()
@@ -44,16 +51,34 @@ export class ConnectionPool {
   private closed = false
   private healthTimer?: NodeJS.Timeout
 
-  constructor(factory: ConnectionFactory, cfg: PoolConfig) {
+  constructor(factory: ConnectionFactory, cfg: PoolConfig, logger?: PoolLogger) {
     this.factory = factory
     this.cfg = cfg
+    this.logger = logger
   }
 
   /** Warm up the minimum number of connections and start health checks. */
   async start(): Promise<void> {
+    this.logger?.info('connecting to Redis...')
+    const connectPromises: Promise<void>[] = []
     for (let i = 0; i < this.cfg.min; i++) {
-      this.idle.push(this.newClient())
+      const client = this.newClient()
+      this.idle.push(client)
+      connectPromises.push(
+        client.ping().then(
+          () => {
+            this.logger?.info('connection %d/%d established', i + 1, this.cfg.min)
+          },
+          (err: Error) => {
+            this.logger?.error('connection %d/%d failed: %s', i + 1, this.cfg.min, err.message)
+          },
+        ),
+      )
     }
+    await Promise.allSettled(connectPromises)
+    const alive = this.idle.filter((c) => c.status === 'ready').length
+    this.logger?.info('pool warmed up: %d/%d connections ready', alive, this.cfg.min)
+
     if (this.cfg.healthCheckMs > 0) {
       this.healthTimer = setInterval(() => void this.healthCheck(), this.cfg.healthCheckMs)
       if (typeof this.healthTimer.unref === 'function') this.healthTimer.unref()
